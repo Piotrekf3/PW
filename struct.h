@@ -7,3 +7,9 @@ typedef struct msgbuf
 	int number;
 } msgbuf;
 
+typedef struct msgbuf_char
+{
+	long mtype;
+	char text [MSGSZ];
+} msgbuf_char;
+

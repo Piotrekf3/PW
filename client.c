@@ -52,5 +52,13 @@ int main(int argc, char *argv[])
 	msgrcv(global,&rbuf,4,1,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
 	
+	int queue;
+	if((queue=msgget(rbuf.number,0666 | IPC_CREAT))==-1)
+	{
+		perror("msgget\n");
+		exit(1);
+	}
+	
+	
 	return 0;
 }

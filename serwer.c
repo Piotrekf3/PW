@@ -23,7 +23,7 @@ int pierwszy_wolny()
 }
 int main(int argc, char *argv[])
 {
-		int i;
+	int i;
 	for(i=0;i<100;i++)
 	client_indexes[i]=0;
 	int global;
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 		perror("msgget\n");
 		exit(1);
 	}
-	
+	int index_memory=shmget(IPC_PRIVATE,sizeof(int),0666 | IPC_CREAT);
 	msgbuf rbuf;
 	rbuf.mtype = 1;
 	if(fork()==0)
@@ -48,7 +48,17 @@ int main(int argc, char *argv[])
 					sbuf.number=pierwszy_wolny();
 					msgsnd(global,&sbuf,4,0);
 					printf("Przyjalem klienta %d\n", sbuf.number);
-					client_indexes[sbuf.number]=1;	
+					int queue; //tworzenie kolejki do komunikacji z klientem
+					if((queue=msgget(sbuf.number,0666 | IPC_CREAT))==-1)
+					{
+						perror("msgget\n");
+						exit(1);
+					}
+					break;	
+				}
+				else
+				{
+					client_indexes[pierwszy_wolny()]=1;
 				}
 			}	
 		}
@@ -57,5 +67,6 @@ int main(int argc, char *argv[])
 	{
 		wait();
 	}
+	shmctl(index_memory,IPC_RMID,NULL);
 	return 0;
 }
