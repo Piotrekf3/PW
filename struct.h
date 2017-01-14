@@ -1,5 +1,5 @@
 #define MSGSZ 255
-#define global_key 1
+#define global_key 100
 
 typedef struct msgbuf
 {

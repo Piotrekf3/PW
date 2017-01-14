@@ -46,10 +46,10 @@ int main(int argc, char *argv[])
 		perror("msgget\n");
 		exit(1);
 	}
-	msgsnd(global,&sbuf,MSGSZ,0);
+	msgsnd(global,&sbuf,sizeof(msgbuf),0);
 	msgbuf rbuf;
 	rbuf.mtype=1;
-	msgrcv(global,&rbuf,4,1,0);
+	msgrcv(global,&rbuf,sizeof(msgbuf),1,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
 	
 	int queue;
