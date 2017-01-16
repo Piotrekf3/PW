@@ -48,17 +48,40 @@ int main(int argc, char *argv[])
 	}
 	msgsnd(global,&sbuf,sizeof(msgbuf),0);
 	msgbuf rbuf;
-	rbuf.mtype=1;
-	msgrcv(global,&rbuf,sizeof(msgbuf),1,0);
+	rbuf.mtype=2;
+	msgrcv(global,&rbuf,sizeof(msgbuf),2,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
 	
 	int queue;
+	//printf("rbuf.number=%d\n",rbuf.number);
 	if((queue=msgget(rbuf.number,0666 | IPC_CREAT))==-1)
 	{
 		perror("msgget\n");
 		exit(1);
 	}
-	
+	printf("Podlaczono do czat\n");
+	//bufory do czatu
+	msgbuf_char chat_rbuf;
+	chat_rbuf.mtype=2;
+	msgbuf_char chat_sbuf;
+	chat_sbuf.mtype=3;
+	chat_sbuf.number=rbuf.number;
+	if(fork()==0) //odbieranie
+	{
+		while(1)
+		{
+			msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char),2,0);
+			printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+		}
+	}
+	else //wysyłanie
+	{
+		while(1)
+		{
+			scanf("%s",&chat_sbuf.text);
+			msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+		}
+	}
 	
 	return 0;
 }

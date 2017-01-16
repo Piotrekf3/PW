@@ -13,9 +13,9 @@
 
 #define index_const 1000;
 
-int pierwszy_wolny(int client_indexes[100])
+int first_empty(int client_indexes[100])
 {
-	int i=0;
+	int i=1;
 	while(i<100 && client_indexes[i]==1)
 		i++;
 	return i;
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
 						exit(1);
 					}
 					msgbuf sbuf;
-					sbuf.mtype=1;
-					sbuf.number=pierwszy_wolny(client_indexes);
+					sbuf.mtype=2;
+					sbuf.number=first_empty(client_indexes);
 					client_indexes[sbuf.number]=1;
 					msgsnd(global,&sbuf,sizeof(msgbuf),0);
 					printf("Przyjalem klienta %d\n", sbuf.number);
@@ -93,7 +93,30 @@ int main(int argc, char *argv[])
 						perror("msgget\n");
 						exit(1);
 					}
-					break;	
+
+					//bufory do czatu
+					msgbuf_char chat_rbuf;
+					chat_rbuf.mtype=3;
+					msgbuf_char chat_sbuf;
+					chat_sbuf.mtype=2;
+
+					if(fork()==0)//odbieranie
+					{
+						while(1)
+						{
+							//odbiera od klienta
+							msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char),3,0);
+						}
+
+					}
+					else 
+					{
+						while(1)
+						{
+						}
+
+					}
+					break;
 				}
 				else
 				{
@@ -106,6 +129,7 @@ int main(int argc, char *argv[])
 		wait();
 		shmctl(index_memory,IPC_RMID,NULL);
 		semctl(index_semaphore,0,IPC_RMID,NULL);
+		msgctl(global,IPC_RMID,0);
 	}
 	return 0;
 }
