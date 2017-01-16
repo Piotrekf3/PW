@@ -14,3 +14,9 @@ typedef struct msgbuf_char
 	char text [MSGSZ];
 } msgbuf_char;
 
+typedef struct Client_indexes
+{
+	int queue_index;
+	int enemy_index;
+} Client_indexes;
+

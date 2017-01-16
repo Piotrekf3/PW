@@ -48,12 +48,11 @@ int main(int argc, char *argv[])
 	}
 	msgsnd(global,&sbuf,sizeof(msgbuf),0);
 	msgbuf rbuf;
-	rbuf.mtype=2;
-	msgrcv(global,&rbuf,sizeof(msgbuf),2,0);
+	rbuf.mtype=3;
+	msgrcv(global,&rbuf,sizeof(msgbuf),3,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
 	
 	int queue;
-	//printf("rbuf.number=%d\n",rbuf.number);
 	if((queue=msgget(rbuf.number,0666 | IPC_CREAT))==-1)
 	{
 		perror("msgget\n");
@@ -71,7 +70,7 @@ int main(int argc, char *argv[])
 		while(1)
 		{
 			msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char),2,0);
-			printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+			printf("Gracz %d: %s\n",chat_rbuf.number,chat_rbuf.text);
 		}
 	}
 	else //wysyłanie
