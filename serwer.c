@@ -10,6 +10,7 @@
 #include<sys/msg.h>
 #include<errno.h>
 #include"struct.h"
+#include<ctype.h>
 
 #define index_const 1000;
 
@@ -57,6 +58,20 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 	}
 	shmdt(client_indexes);
 	increase_semaphore(semid);
+}
+
+int load_chosen_player(const char * text)
+{
+	char * temp;
+	int i=0;
+	while(text[i+1]!='\0')
+	{
+		temp[i]=text[i+1];
+		i++;
+		printf("%d\n",i);
+	}
+	return atoi(temp);
+
 }
 
 int main(int argc, char *argv[])
@@ -129,9 +144,20 @@ int main(int argc, char *argv[])
 								perror("msgrcv\n");
 								exit(1);
 							}
-							chat_sbuf=chat_rbuf;
-							chat_sbuf.mtype=2;
-							send_to_all_clients(index_memory,index_semaphore,chat_sbuf);
+							if(chat_rbuf.text[0]==':')
+							{
+								if(isdigit(chat_rbuf.text[1]))
+								{
+									int chosen_player=load_chosen_player(chat_rbuf.text);
+
+								}
+							}
+							else
+							{
+								chat_sbuf=chat_rbuf;
+								chat_sbuf.mtype=2;
+								send_to_all_clients(index_memory,index_semaphore,chat_sbuf);
+							}
 						}
 
 					}
