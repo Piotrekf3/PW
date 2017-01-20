@@ -13,8 +13,8 @@
 #include"struct.h"
 #include<ctype.h>
 
-#define index_const 1000;
 
+//pierwszy wolny indeks dla klienta
 int first_empty(Client_indexes client_indexes[100])
 {
 	int i=1;
@@ -42,6 +42,7 @@ void decrease_semaphore(int semid)
 	semop(semid,&temp,1);
 }
 
+//wysyla czat do wszystkich klientow
 void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 {
 	Client_indexes * client_indexes;
@@ -57,12 +58,13 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 	for(i=1;i<100;i++)
 	{
 		if(client_indexes[i].queue_index!=0 && client_indexes[i].enemy_index==0)
-		msgsnd(client_indexes[i].queue_index,&sbuf,sizeof(msgbuf_char),0);
+			msgsnd(client_indexes[i].queue_index,&sbuf,sizeof(msgbuf_char),0);
 	}
 	shmdt(client_indexes);
 	increase_semaphore(semid);
 }
 
+//zmienia :nr na nr
 int load_chosen_player(const char * text)
 {
 	char * temp=malloc(sizeof(text)-1);
@@ -118,6 +120,32 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		return 0;
 
 
+}
+
+//wysyla wszystkich dostepnych graczy
+void send_player_names(int index_memory,int semid, int player_queue)
+{
+	int i;
+	msgbuf sbuf;
+	sbuf.mtype=show_players_type;
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	for(i=0;i<100;i++)
+	{
+		if(client_indexes[i].queue_index!=0 && client_indexes[i].enemy_index==0)
+		{
+			sbuf.number=i;
+			msgsnd(client_indexes[player_queue].queue_index,&sbuf,sizeof(msgbuf),0);
+		}
+	}
+	shmdt(client_indexes);
+	increase_semaphore(semid);
 }
 
 int main(int argc, char *argv[])
@@ -195,21 +223,25 @@ int main(int argc, char *argv[])
 								if(isdigit(chat_rbuf.text[1])) //:nr_gracza
 								{
 									int chosen_player=load_chosen_player(chat_rbuf.text);
+									//wysyla do przeciwnika
 									if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
 									{
 										printf("ok\n");
 									}
+									//wysyla do nadawcy
 									if(fork()==0)
-									if(send_request(index_memory,index_semaphore,chosen_player,sbuf.number))
-									{
-										printf("ok2\n");
-									}
+										if(send_request(index_memory,index_semaphore,chosen_player,sbuf.number))
+										{
+											printf("ok2\n");
+										}
 									//gra
 
+
+									//
 								}
 								else if(chat_rbuf.text[1]=='g') // :g
 								{
-
+									send_player_names(index_memory,index_semaphore,sbuf.number);
 								}
 							}
 							else //zwykly czat
@@ -221,7 +253,7 @@ int main(int argc, char *argv[])
 						}
 
 					}
-					else   //wysyłanie 
+					else   
 					{
 
 					}

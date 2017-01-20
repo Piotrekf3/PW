@@ -137,15 +137,26 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			while(1)
+			if(fork()==0)
 			{
-				decrease_semaphore(enter_semaphore);
-				scanf("%s",chat_sbuf.text);
-				increase_semaphore(enter_semaphore);
-				msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+				msgbuf players_rbuf;
+				while(1) //odbieranie listy graczy
+				{
+					msgrcv(queue,&players_rbuf,sizeof(msgbuf),show_players_type,0);
+					printf("Gracz %d - wolny\n",players_rbuf.number);
+				}
+			}
+			else
+			{
+				while(1) //wysylanie czatu
+				{
+					decrease_semaphore(enter_semaphore);
+					scanf("%s",chat_sbuf.text);
+					increase_semaphore(enter_semaphore);
+					msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+				}
 			}
 		}
 	}
-
 	return 0;
 }
