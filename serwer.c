@@ -48,6 +48,7 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
 	{
 		perror("shmat\n");
+		increase_semaphore(semid);
 		exit(1);
 	}
 
@@ -68,9 +69,50 @@ int load_chosen_player(const char * text)
 	{
 		temp[i]=text[i+1];
 		i++;
-		printf("%d\n",i);
 	}
 	return atoi(temp);
+
+}
+
+//wysyla zapytanie o rozpoczecie gry
+int send_request(int index_memory, int semid,int player_id, int enemy_id)
+{
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	int queue=client_indexes[enemy_id].queue_index;
+	shmdt(client_indexes);
+	increase_semaphore(semid);
+
+	msgbuf sbuf;
+	sbuf.mtype=send_request_type;
+	sbuf.number=player_id;
+	msgsnd(queue,&sbuf,sizeof(msgbuf),0);
+	msgbuf rbuf;
+	msgrcv(queue,&rbuf,sizeof(msgbuf),receive_request_type,0);
+	if(rbuf.number)
+	{
+		decrease_semaphore(semid);
+		if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+		{
+			perror("shmat\n");
+			increase_semaphore(semid);
+			exit(1);
+		}
+		client_indexes[player_id].enemy_index=client_indexes[enemy_id].queue_index;
+		client_indexes[enemy_id].enemy_index=client_indexes[player_id].queue_index;
+		shmdt(client_indexes);
+		increase_semaphore(semid);
+		return 1;
+	}
+	else
+		return 0;
+
 
 }
 
@@ -146,13 +188,21 @@ int main(int argc, char *argv[])
 							}
 							if(chat_rbuf.text[0]==':')
 							{
-								if(isdigit(chat_rbuf.text[1]))
+								if(isdigit(chat_rbuf.text[1])) //:nr_gracza
 								{
 									int chosen_player=load_chosen_player(chat_rbuf.text);
+									if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
+									{
+										printf("ok\n");
+									}
+
+								}
+								else if(chat_rbuf.text[1]=='g') // :g
+								{
 
 								}
 							}
-							else
+							else //zwykly czat
 							{
 								chat_sbuf=chat_rbuf;
 								chat_sbuf.mtype=2;

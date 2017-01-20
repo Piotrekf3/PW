@@ -1,5 +1,8 @@
 #define MSGSZ 255
 #define global_key 1000
+//game request types
+#define send_request_type 4
+#define receive_request_type 5 
 
 typedef struct msgbuf
 {

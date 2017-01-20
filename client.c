@@ -33,11 +33,36 @@ void zeruj(int tab[6][7])
 	int i,j;
 	for(i=0;i<6;i++)
 		for(j=0;j<7;j++)
-		tab[i][j]=0;
+			tab[i][j]=0;
+}
+
+void increase_semaphore(int semid)
+{
+	struct sembuf temp;
+	temp.sem_num=0;
+	temp.sem_op=1;
+	temp.sem_flg=0;
+	semop(semid,&temp,1);
+}
+
+void decrease_semaphore(int semid)
+{
+	struct sembuf temp;
+	temp.sem_num=0;
+	temp.sem_op=-1;
+	temp.sem_flg=0;
+	semop(semid,&temp,1);
 }
 
 int main(int argc, char *argv[])
 {
+	int enter_semaphore;
+	if((enter_semaphore=semget(IPC_PRIVATE,1,0))==-1)
+	{
+		perror("semget\n");
+		exit(1);
+	}
+	increase_semaphore(enter_semaphore);
 	msgbuf sbuf;
 	sbuf.mtype=1;
 	int global;
@@ -51,7 +76,7 @@ int main(int argc, char *argv[])
 	rbuf.mtype=3;
 	msgrcv(global,&rbuf,sizeof(msgbuf),3,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
-	
+
 	int queue;
 	if((queue=msgget(rbuf.number,0666 | IPC_CREAT))==-1)
 	{
@@ -75,12 +100,43 @@ int main(int argc, char *argv[])
 	}
 	else //wysyłanie
 	{
-		while(1)
+		if(fork()==0) //odbieranie zapytan o grę
 		{
-			scanf("%s",&chat_sbuf.text);
-			msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+			msgbuf request_rbuf;
+			while(1)
+			{
+				msgrcv(queue,&request_rbuf,sizeof(msgbuf),send_request_type,0);
+				printf("Czy chcesz rozpoczac gre z graczem %d? (y/n)",request_rbuf.number);
+				char c_answer;
+				int answer;
+				decrease_semaphore(enter_semaphore);
+				scanf("%c",&c_answer);
+				increase_semaphore(enter_semaphore);
+				if(c_answer='y')
+					answer=1;
+				else
+					answer=0;
+
+				request_rbuf.number=answer;
+				request_rbuf.mtype=receive_request_type;
+				msgsnd(queue,&request_rbuf,sizeof(msgbuf),0);
+				if(answer==1)
+				{
+					printf("Tak\n");
+				}
+			}
+		}
+		else
+		{
+			while(1)
+			{
+				decrease_semaphore(enter_semaphore);
+				scanf("%s",&chat_sbuf.text);
+				increase_semaphore(enter_semaphore);
+				msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+			}
 		}
 	}
-	
+
 	return 0;
 }
