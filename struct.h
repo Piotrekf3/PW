@@ -14,7 +14,7 @@ typedef struct msgbuf_char
 {
 	long mtype;
 	int number;
-	char text [MSGSZ];
+	char text[MSGSZ];
 } msgbuf_char;
 
 typedef struct Client_indexes

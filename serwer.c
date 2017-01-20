@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<fcntl.h>
 #include<sys/types.h>
+#include<sys/wait.h>
 #include<sys/ipc.h>
 #include<sys/sem.h>
 #include<sys/shm.h>
@@ -53,8 +54,9 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 	}
 
 	int i;
-	for(i=1;i<first_empty(client_indexes);i++)
+	for(i=1;i<100;i++)
 	{
+		if(client_indexes[i].queue_index!=0 && client_indexes[i].enemy_index==0)
 		msgsnd(client_indexes[i].queue_index,&sbuf,sizeof(msgbuf_char),0);
 	}
 	shmdt(client_indexes);
@@ -63,14 +65,16 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 
 int load_chosen_player(const char * text)
 {
-	char * temp;
+	char * temp=malloc(sizeof(text)-1);
 	int i=0;
 	while(text[i+1]!='\0')
 	{
 		temp[i]=text[i+1];
 		i++;
 	}
-	return atoi(temp);
+	int result=atoi(temp);
+	free(temp);
+	return result;
 
 }
 
@@ -195,6 +199,12 @@ int main(int argc, char *argv[])
 									{
 										printf("ok\n");
 									}
+									if(fork()==0)
+									if(send_request(index_memory,index_semaphore,chosen_player,sbuf.number))
+									{
+										printf("ok2\n");
+									}
+									//gra
 
 								}
 								else if(chat_rbuf.text[1]=='g') // :g
@@ -225,7 +235,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		wait();
+		wait(NULL);
 		shmctl(index_memory,IPC_RMID,NULL);
 		semctl(index_semaphore,0,IPC_RMID,NULL);
 		msgctl(global,IPC_RMID,0);
