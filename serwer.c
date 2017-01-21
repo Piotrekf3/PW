@@ -126,6 +126,7 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 				exit(1);
 			}
 			client_indexes[enemy_id].semaphore_index=client_indexes[player_id].semaphore_index;
+			increase_semaphore(client_indexes[player_id].semaphore_index);
 		}
 		shmdt(client_indexes);
 		increase_semaphore(semid);
@@ -199,10 +200,34 @@ int get_semaphore_index(int memory_index,int semid,int player)
 
 }
 
-//void assign_game_tab_memory(int memory_index)
-//{
+void assign_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
+{
+	int i;
+	decrease_semaphore(semid);
+	if((*data=shmat(memory_index,NULL,0))==(void *)-1)
+	{
+		perror("shmat\n");
+		exit(1);
+	}
+	printf("funkcja1\n");
+	*game_memory=malloc(6 * sizeof(int *));
+	printf("funkcja2\n");
+	for(i=0;i<6;i++)
+	{
+		printf("i=%d\n",i);
+		*game_memory[i] = *data+i*7;
+	}
+	printf("funkcja\n");
+	printf("w funkcji=%d\n",*game_memory[1][2]);
+}
 
-//}
+void dismiss_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
+{
+	free(game_memory);
+	game_memory=NULL;
+	shmdt(data);
+	increase_semaphore(semid);
+}
 
 int main(int argc, char *argv[])
 {
@@ -318,7 +343,12 @@ int main(int argc, char *argv[])
 						printf("game_memory=%d\n",game_memory);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
 						printf("game_semaphore=%d\n",game_semaphore);
-						int ** game_tab;
+						int * data=NULL;
+						int ** game_tab=NULL;
+						assign_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+						printf("dupa\n");
+						printf("tutaj=%d\n",game_tab[1][2]);
+						dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 
 					}
 					break;
