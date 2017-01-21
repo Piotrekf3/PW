@@ -178,7 +178,7 @@ int get_memory_index(int memory_index,int semid,int player)
 	}
 	int result=client_indexes[player].memory_index;
 	shmdt(client_indexes);
-	decrease_semaphore(semid);
+	increase_semaphore(semid);
 	return result;
 }
 
@@ -194,7 +194,7 @@ int get_semaphore_index(int memory_index,int semid,int player)
 	}
 	int result=client_indexes[player].semaphore_index;
 	shmdt(client_indexes);
-	decrease_semaphore(semid);
+	increase_semaphore(semid);
 	return result;
 
 }
@@ -279,11 +279,6 @@ int main(int argc, char *argv[])
 								if(isdigit(chat_rbuf.text[1])) //:nr_gracza
 								{
 									int chosen_player=load_chosen_player(chat_rbuf.text);
-									//wysyla do przeciwnika
-									if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
-									{
-										printf("ok\n");
-									}
 									//wysyla do nadawcy
 									if(fork()==0)
 									{
@@ -293,6 +288,12 @@ int main(int argc, char *argv[])
 										}
 										exit(1);
 									}
+									//wysyla do przeciwnika
+									if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
+									{
+										printf("ok\n");
+									}
+
 								}
 								else if(chat_rbuf.text[1]=='g') // :g
 								{
@@ -312,7 +313,11 @@ int main(int argc, char *argv[])
 					{
 						msgbuf game_rbuf;
 						msgrcv(queue,&game_rbuf,sizeof(msgbuf),start_game_type,0);
-						//printf("Rozpoczecie gry dla %d\n",sbuf.number);
+						printf("Rozpoczecie gry dla %d\n",sbuf.number);
+						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
+						printf("game_memory=%d\n",game_memory);
+						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
+						printf("game_semaphore=%d\n",game_semaphore);
 						int ** game_tab;
 
 					}
