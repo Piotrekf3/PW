@@ -80,7 +80,7 @@ int load_chosen_player(const char * text)
 
 }
 
-//wysyla zapytanie o rozpoczecie gry
+//wysyla zapytanie o rozpoczecie gry i ja tworzy
 int send_request(int index_memory, int semid,int player_id, int enemy_id)
 {
 	Client_indexes * client_indexes;
@@ -101,7 +101,7 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 	msgsnd(queue,&sbuf,sizeof(msgbuf),0);
 	msgbuf rbuf;
 	msgrcv(queue,&rbuf,sizeof(msgbuf),receive_request_type,0);
-	if(rbuf.number)
+	if(rbuf.number)//gracz sie zgodzil
 	{
 		decrease_semaphore(semid);
 		if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
@@ -112,8 +112,26 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		}
 		client_indexes[player_id].enemy_index=client_indexes[enemy_id].queue_index;
 		client_indexes[enemy_id].enemy_index=client_indexes[player_id].queue_index;
+		if(client_indexes[player_id].memory_index==0)
+		{
+			if((client_indexes[player_id].memory_index=shmget(IPC_PRIVATE, 6*7*sizeof(int), 0666 | IPC_CREAT))==-1)
+			{
+				perror("shmget\n");
+				exit(1);
+			}
+			client_indexes[enemy_id].memory_index=client_indexes[player_id].memory_index;
+			if((client_indexes[player_id].semaphore_index=semget(IPC_PRIVATE,1,0666 | IPC_CREAT))==-1)
+			{
+				perror("semget\n");
+				exit(1);
+			}
+			client_indexes[enemy_id].semaphore_index=client_indexes[player_id].semaphore_index;
+		}
 		shmdt(client_indexes);
 		increase_semaphore(semid);
+
+		sbuf.mtype=start_game_type;
+		msgsnd(queue,&sbuf,sizeof(msgbuf),0);
 		return 1;
 	}
 	else
@@ -147,6 +165,44 @@ void send_player_names(int index_memory,int semid, int player_queue)
 	shmdt(client_indexes);
 	increase_semaphore(semid);
 }
+
+int get_memory_index(int memory_index,int semid,int player)
+{
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(memory_index,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	int result=client_indexes[player].memory_index;
+	shmdt(client_indexes);
+	decrease_semaphore(semid);
+	return result;
+}
+
+int get_semaphore_index(int memory_index,int semid,int player)
+{
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(memory_index,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	int result=client_indexes[player].semaphore_index;
+	shmdt(client_indexes);
+	decrease_semaphore(semid);
+	return result;
+
+}
+
+//void assign_game_tab_memory(int memory_index)
+//{
+
+//}
 
 int main(int argc, char *argv[])
 {
@@ -230,14 +286,13 @@ int main(int argc, char *argv[])
 									}
 									//wysyla do nadawcy
 									if(fork()==0)
+									{
 										if(send_request(index_memory,index_semaphore,chosen_player,sbuf.number))
 										{
 											printf("ok2\n");
 										}
-									//gra
-
-
-									//
+										exit(1);
+									}
 								}
 								else if(chat_rbuf.text[1]=='g') // :g
 								{
@@ -253,8 +308,12 @@ int main(int argc, char *argv[])
 						}
 
 					}
-					else   
+					else   //rozpoczynanie gry
 					{
+						msgbuf game_rbuf;
+						msgrcv(queue,&game_rbuf,sizeof(msgbuf),start_game_type,0);
+						//printf("Rozpoczecie gry dla %d\n",sbuf.number);
+						int ** game_tab;
 
 					}
 					break;

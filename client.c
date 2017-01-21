@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
 				if(answer==1)//zaczyna gre
 				{
 					int tab[6][7];
+					zeruj(tab);
 					wyswietl(tab);
 				}
 			}
