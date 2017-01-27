@@ -13,7 +13,28 @@
 #include"struct.h"
 #include<ctype.h>
 
-
+void wyswietl(int ** tab)
+{
+	int i, j;
+	printf("   ");
+	for(i=0;i<7;i++)
+		printf("%c ",'A'+i);
+	printf("\n");
+	for(i=0;i<6;i++)
+	{
+		printf("%d  ",i);
+		for(j=0;j<7;j++)
+		{
+			if(tab[i][j]==1)
+				printf("* ");
+			else if(tab[i][j]==2)
+				printf("# ");
+			else
+				printf("- ");
+		}
+		printf("\n");
+	}
+}
 //pierwszy wolny indeks dla klienta
 int first_empty(Client_indexes client_indexes[100])
 {
@@ -232,6 +253,34 @@ void dismiss_game_tab_memory(int memory_index,int semid, int *** game_memory,int
 	increase_semaphore(semid);
 }
 
+//funkcje gry
+int move_validation(int ** game_tab, int column)
+{
+	if(column>=0 && column<7)
+	{
+		int i=5;
+		while(i>=0 && game_tab[i][column]!=0)
+		{
+			i--;
+		}
+		return (!game_tab[i][column]);
+	}
+	else
+		return 0;
+}
+
+void make_move(int **game_tab, int column, int player)
+{
+	printf("make_move1\n");
+	int i=5;
+	while(i>=0 && game_tab[i][column]!=0)
+	{
+		i--;
+	}
+	game_tab[i][column]=player;
+	printf("make_move2\n");
+}
+
 int main(int argc, char *argv[])
 {
 	//kolejka globalna
@@ -344,7 +393,7 @@ int main(int argc, char *argv[])
 						printf("Rozpoczecie gry dla %d\n",sbuf.number);
 						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
-
+						
 						int * data=NULL;
 						int ** game_tab=NULL;
 						//	assign_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
@@ -352,18 +401,21 @@ int main(int argc, char *argv[])
 						{
 							data = assign_data(game_memory,game_semaphore);
 							game_tab = assign_game_tab(data);
+							wyswietl(game_tab);
 
 							//ruch tego gracza
 							msgbuf game_sbuf;
 							game_sbuf.mtype=move_s_type;
-							msgbuf game_rbuf1;
-							//while(!sparawdz_poprawnosc)
-							//{
+							msgbuf game_rbuf;
+							game_rbuf.number=10;
+							while(!move_validation(game_tab,game_rbuf.number))
+							{
 								msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
-								msgrcv(queue,&game_rbuf1,sizeof(msgbuf),move_r_type,0);
-								//wykonaj ruch
-								printf("ruch na pole %d wykonany\n",game_rbuf1.number);
-							//}
+								msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_r_type,0);
+							}
+							make_move(game_tab,game_rbuf.number,1);//do zmiany nr gracza
+							printf("ruch na pole %d wykonany\n",game_rbuf.number);
+
 							//koniec ruchu
 							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 							sleep(1);
