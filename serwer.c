@@ -200,32 +200,35 @@ int get_semaphore_index(int memory_index,int semid,int player)
 
 }
 
-void assign_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
+int * assign_data(int memory_index, int semid)
 {
-	int i;
+	int * data;
 	decrease_semaphore(semid);
-	if((*data=shmat(memory_index,NULL,0))==(void *)-1)
+	if((data=shmat(memory_index,NULL,0))==(void *)-1)
 	{
 		perror("shmat\n");
 		exit(1);
 	}
-	printf("funkcja1\n");
-	*game_memory=malloc(6 * sizeof(int *));
-	printf("funkcja2\n");
+	return data;
+}
+
+int ** assign_game_tab(int * data)
+{
+	int ** game_memory;
+	game_memory=malloc(6 * sizeof(int *));
+	int i;
 	for(i=0;i<6;i++)
 	{
-		printf("i=%d\n",i);
-		*game_memory[i] = *data+i*7;
+		game_memory[i] = data+i*7;
 	}
-	printf("funkcja\n");
-	printf("w funkcji=%d\n",*game_memory[1][2]);
+	return game_memory;
 }
 
 void dismiss_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
 {
-	free(game_memory);
-	game_memory=NULL;
-	shmdt(data);
+	free(*game_memory);
+	*game_memory=NULL;
+	shmdt(*data);
 	increase_semaphore(semid);
 }
 
@@ -340,15 +343,31 @@ int main(int argc, char *argv[])
 						msgrcv(queue,&game_rbuf,sizeof(msgbuf),start_game_type,0);
 						printf("Rozpoczecie gry dla %d\n",sbuf.number);
 						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
-						printf("game_memory=%d\n",game_memory);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
-						printf("game_semaphore=%d\n",game_semaphore);
+
 						int * data=NULL;
 						int ** game_tab=NULL;
-						assign_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
-						printf("dupa\n");
-						printf("tutaj=%d\n",game_tab[1][2]);
-						dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+						//	assign_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+						while(1)
+						{
+							data = assign_data(game_memory,game_semaphore);
+							game_tab = assign_game_tab(data);
+
+							//ruch tego gracza
+							msgbuf game_sbuf;
+							game_sbuf.mtype=move_s_type;
+							msgbuf game_rbuf1;
+							//while(!sparawdz_poprawnosc)
+							//{
+								msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
+								msgrcv(queue,&game_rbuf1,sizeof(msgbuf),move_r_type,0);
+								//wykonaj ruch
+								printf("ruch na pole %d wykonany\n",game_rbuf1.number);
+							//}
+							//koniec ruchu
+							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+							sleep(1);
+						}
 
 					}
 					break;

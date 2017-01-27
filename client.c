@@ -133,6 +133,24 @@ int main(int argc, char *argv[])
 					int tab[6][7];
 					zeruj(tab);
 					wyswietl(tab);
+					msgbuf game_rbuf;
+					msgbuf game_sbuf;
+					game_sbuf.mtype=move_r_type;
+					while(1)
+					{
+						msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_s_type,0);
+						printf("Twój ruch\n");
+						char c;
+						while((c=fgetc(stdin))!='\n')
+						{
+							printf("%c\n",c);
+						}
+						char move;
+						scanf("%c",&move);
+						game_sbuf.number=(int)move-'A';
+						printf("%d\n",game_sbuf.number);
+						msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
+					}
 				}
 			}
 		}

@@ -5,6 +5,8 @@
 #define receive_request_type 5
 #define show_players_type 6
 #define start_game_type 7
+#define move_s_type 8
+#define move_r_type 9
 
 typedef struct msgbuf
 {
