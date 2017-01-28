@@ -256,6 +256,7 @@ void dismiss_game_tab_memory(int memory_index,int semid, int *** game_memory,int
 //funkcje gry
 int move_validation(int ** game_tab, int column)
 {
+	printf("move_validation1\n");
 	if(column>=0 && column<7)
 	{
 		int i=5;
@@ -263,9 +264,11 @@ int move_validation(int ** game_tab, int column)
 		{
 			i--;
 		}
+		printf("move_validation2\n");
 		return (!game_tab[i][column]);
 	}
 	else
+		printf("move_validation3\n");
 		return 0;
 }
 
@@ -285,7 +288,7 @@ int make_move(int **game_tab, int column, int player)
 //wysyla ruch do graczy
 void send_move(int index_memory, int semid, int player_id, int line, int column)
 {
-	msgbuf sbuf;
+	msgbuf sbuf[4];
 	Client_indexes * client_indexes;
 	decrease_semaphore(semid);
 	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
@@ -295,17 +298,19 @@ void send_move(int index_memory, int semid, int player_id, int line, int column)
 		exit(1);
 	}
 	//wysylanie wiersza
-	sbuf.mtype=move_line_server_type;
-	sbuf.number=line;
-	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	sbuf[0].mtype=sbuf[1].mtype=move_line_server_type;
+	sbuf[0].number=sbuf[1].number=line;
+	printf("sbuf[0]=%d\n",sbuf[0].number);
+	printf("player_index=%d\n enemy_index=%d\n",client_indexes[player_id].queue_index,client_indexes[player_id].enemy_index);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[0],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[1],sizeof(msgbuf),0);
 	printf("Wyslano wiersz\n");
 
 	//wysylanie kloumny
-	sbuf.mtype=move_column_server_type;
-	sbuf.number=column;
-	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	sbuf[2].mtype=sbuf[3].mtype=move_column_server_type;
+	sbuf[2].number=sbuf[3].number=column;
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[2],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[3],sizeof(msgbuf),0);
 	printf("wyslano kolumny\n");
 
 	shmdt(client_indexes);
@@ -446,6 +451,7 @@ int main(int argc, char *argv[])
 							int line = make_move(game_tab,game_rbuf.number,1);//do zmiany nr gracza
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);
 
+							printf("line=%d\n column=%d\n",line,game_rbuf.number);
 							//wysylanie ruchu do gracza
 							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number);
 							//koniec ruchu
