@@ -269,7 +269,7 @@ int move_validation(int ** game_tab, int column)
 		return 0;
 }
 
-void make_move(int **game_tab, int column, int player)
+int make_move(int **game_tab, int column, int player)
 {
 	printf("make_move1\n");
 	int i=5;
@@ -279,6 +279,37 @@ void make_move(int **game_tab, int column, int player)
 	}
 	game_tab[i][column]=player;
 	printf("make_move2\n");
+	return i;
+}
+
+//wysyla ruch do graczy
+void send_move(int index_memory, int semid, int player_id, int line, int column)
+{
+	msgbuf sbuf;
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	//wysylanie wiersza
+	sbuf.mtype=move_line_server_type;
+	sbuf.number=line;
+	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	printf("Wyslano wiersz\n");
+
+	//wysylanie kloumny
+	sbuf.mtype=move_column_server_type;
+	sbuf.number=column;
+	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	printf("wyslano kolumny\n");
+
+	shmdt(client_indexes);
+	increase_semaphore(semid);
 }
 
 int main(int argc, char *argv[])
@@ -393,12 +424,11 @@ int main(int argc, char *argv[])
 						printf("Rozpoczecie gry dla %d\n",sbuf.number);
 						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
-						
 						int * data=NULL;
 						int ** game_tab=NULL;
-						//	assign_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 						while(1)
 						{
+							//opuszczenie semafora
 							data = assign_data(game_memory,game_semaphore);
 							game_tab = assign_game_tab(data);
 							wyswietl(game_tab);
@@ -413,11 +443,14 @@ int main(int argc, char *argv[])
 								msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
 								msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_r_type,0);
 							}
-							make_move(game_tab,game_rbuf.number,1);//do zmiany nr gracza
+							int line = make_move(game_tab,game_rbuf.number,1);//do zmiany nr gracza
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);
 
+							//wysylanie ruchu do gracza
+							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number);
 							//koniec ruchu
 							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+							//podniesienie semafora
 							sleep(1);
 						}
 

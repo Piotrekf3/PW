@@ -5,8 +5,10 @@
 #define receive_request_type 5
 #define show_players_type 6
 #define start_game_type 7
-#define move_s_type 8
+#define move_s_type 8 //przesylanie ruchu
 #define move_r_type 9
+#define move_line_server_type 10 //do wysylania wiersza do gracza
+#define move_column_server_type 11
 
 typedef struct msgbuf
 {
