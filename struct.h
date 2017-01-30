@@ -29,5 +29,6 @@ typedef struct Client_indexes
 	int enemy_index;
 	int memory_index;
 	int semaphore_index;
+	int player_id;
 } Client_indexes;
 

@@ -133,6 +133,9 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		}
 		client_indexes[player_id].enemy_index=client_indexes[enemy_id].queue_index;
 		client_indexes[enemy_id].enemy_index=client_indexes[player_id].queue_index;
+		printf("player=%d\n",player_id);
+		printf("queue=%d\n",client_indexes[player_id].queue_index);
+		printf("client_indexes[player_id].player_id=%d\n",client_indexes[player_id].player_id);
 		if(client_indexes[player_id].memory_index==0)
 		{
 			if((client_indexes[player_id].memory_index=shmget(IPC_PRIVATE, 6*7*sizeof(int), 0666 | IPC_CREAT))==-1)
@@ -148,10 +151,12 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 			}
 			client_indexes[enemy_id].semaphore_index=client_indexes[player_id].semaphore_index;
 			increase_semaphore(client_indexes[player_id].semaphore_index);
+			client_indexes[enemy_id].player_id=2;
+			client_indexes[player_id].player_id=1;
 		}
 		shmdt(client_indexes);
 		increase_semaphore(semid);
-
+		
 		sbuf.mtype=start_game_type;
 		msgsnd(queue,&sbuf,sizeof(msgbuf),0);
 		return 1;
@@ -221,6 +226,21 @@ int get_semaphore_index(int memory_index,int semid,int player)
 
 }
 
+int get_player_id(int memory_index,int semid, int player)
+{
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(memory_index,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	int result=client_indexes[player].player_id;
+	shmdt(client_indexes);
+	increase_semaphore(semid);
+	return result;
+}
 int * assign_data(int memory_index, int semid)
 {
 	int * data;
@@ -431,6 +451,8 @@ int main(int argc, char *argv[])
 						printf("Rozpoczecie gry dla %d\n",sbuf.number);
 						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
+						int player_id=get_player_id(index_memory,index_semaphore,sbuf.number);
+						printf("player_id=%d\n",player_id);
 						int * data=NULL;
 						int ** game_tab=NULL;
 						while(1)
@@ -450,7 +472,7 @@ int main(int argc, char *argv[])
 								msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
 								msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_r_type,0);
 							}
-							int line = make_move(game_tab,game_rbuf.number,1);//do zmiany nr gracza
+							int line = make_move(game_tab,game_rbuf.number,player_id);//do zmiany nr gracza
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);
 
 							printf("line=%d\n column=%d\n",line,game_rbuf.number);
