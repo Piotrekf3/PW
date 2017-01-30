@@ -260,11 +260,13 @@ int move_validation(int ** game_tab, int column)
 	if(column>=0 && column<7)
 	{
 		int i=5;
-		while(i>=0 && game_tab[i][column]!=0)
+		while(i>0 && game_tab[i][column]!=0)
 		{
 			i--;
 		}
 		printf("move_validation2\n");
+		printf("%d\n",i);
+		printf("waruenk=%d\n",!game_tab[i][column]);
 		return (!game_tab[i][column]);
 	}
 	else
@@ -452,7 +454,7 @@ int main(int argc, char *argv[])
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);
 
 							printf("line=%d\n column=%d\n",line,game_rbuf.number);
-							//wysylanie ruchu do gracza
+							//wysylanie ruchu do graczy
 							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number);
 							//koniec ruchu
 							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);

@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 			printf("Gracz %d: %s\n",chat_rbuf.number,chat_rbuf.text);
 		}
 	}
-	else //wysyłanie
+	else 
 	{
 		if(fork()==0) //odbieranie zapytan o grę
 		{
@@ -137,14 +137,26 @@ int main(int argc, char *argv[])
 					msgbuf game_sbuf;
 					game_sbuf.mtype=move_r_type;
 
-					int control=0;
 
 					msgbuf move_rbuf1;
 					msgbuf move_rbuf2;
 
-					while(1)
+					if(fork()==0)
 					{
-						if(control==0)
+						while(1)
+						{
+							//przyjmowanie ruchu z serwera
+							msgrcv(queue,&move_rbuf1,sizeof(msgbuf),move_line_server_type,0);
+							msgrcv(queue,&move_rbuf2,sizeof(msgbuf),move_column_server_type,0);
+							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
+							tab[move_rbuf1.number][move_rbuf2.number]=1;
+							wyswietl(tab);
+							sleep(1);
+						}
+					}
+					else
+					{
+						while(1)
 						{
 							msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_s_type,0);
 
@@ -159,25 +171,6 @@ int main(int argc, char *argv[])
 							game_sbuf.number=(int)move-'A';
 							printf("%d\n",game_sbuf.number);
 							msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
-
-							//przyjmowanie ruchu z serwera
-							msgrcv(queue,&move_rbuf1,sizeof(msgbuf),move_line_server_type,0);
-							msgrcv(queue,&move_rbuf2,sizeof(msgbuf),move_column_server_type,0);
-							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
-							tab[move_rbuf1.number][move_rbuf2.number]=1;
-							wyswietl(tab);
-
-							control=1;
-						}
-						else
-						{
-							//przyjmowanie ruchu z serwera
-							msgrcv(queue,&move_rbuf1,sizeof(msgbuf),move_line_server_type,0);
-							msgrcv(queue,&move_rbuf2,sizeof(msgbuf),move_column_server_type,0);
-							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
-							tab[move_rbuf1.number][move_rbuf2.number]=1;
-							wyswietl(tab);
-							control=0;
 						}
 					}
 				}
