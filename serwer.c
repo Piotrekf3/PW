@@ -133,9 +133,6 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		}
 		client_indexes[player_id].enemy_index=client_indexes[enemy_id].queue_index;
 		client_indexes[enemy_id].enemy_index=client_indexes[player_id].queue_index;
-		printf("player=%d\n",player_id);
-		printf("queue=%d\n",client_indexes[player_id].queue_index);
-		printf("client_indexes[player_id].player_id=%d\n",client_indexes[player_id].player_id);
 		if(client_indexes[player_id].memory_index==0)
 		{
 			if((client_indexes[player_id].memory_index=shmget(IPC_PRIVATE, 6*7*sizeof(int), 0666 | IPC_CREAT))==-1)
@@ -308,9 +305,9 @@ int make_move(int **game_tab, int column, int player)
 }
 
 //wysyla ruch do graczy
-void send_move(int index_memory, int semid, int player_id, int line, int column)
+void send_move(int index_memory, int semid, int player_id, int line, int column,int player)
 {
-	msgbuf sbuf[4];
+	msgbuf sbuf[6];
 	Client_indexes * client_indexes;
 	decrease_semaphore(semid);
 	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
@@ -334,6 +331,12 @@ void send_move(int index_memory, int semid, int player_id, int line, int column)
 	msgsnd(client_indexes[player_id].queue_index,&sbuf[2],sizeof(msgbuf),0);
 	msgsnd(client_indexes[player_id].enemy_index,&sbuf[3],sizeof(msgbuf),0);
 	printf("wyslano kolumny\n");
+
+	//wysyalnie gracza
+	sbuf[4].mtype=sbuf[5].mtype=move_player_type;
+	sbuf[4].number=sbuf[5].number=player;
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[4],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[5],sizeof(msgbuf),0);
 
 	shmdt(client_indexes);
 	increase_semaphore(semid);
@@ -477,7 +480,7 @@ int main(int argc, char *argv[])
 
 							printf("line=%d\n column=%d\n",line,game_rbuf.number);
 							//wysylanie ruchu do graczy
-							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number);
+							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number,player_id);
 							//koniec ruchu
 							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 							//podniesienie semafora

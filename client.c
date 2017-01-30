@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
 
 					msgbuf move_rbuf1;
 					msgbuf move_rbuf2;
+					msgbuf move_player;
 
 					if(fork()==0)
 					{
@@ -148,8 +149,10 @@ int main(int argc, char *argv[])
 							//przyjmowanie ruchu z serwera
 							msgrcv(queue,&move_rbuf1,sizeof(msgbuf),move_line_server_type,0);
 							msgrcv(queue,&move_rbuf2,sizeof(msgbuf),move_column_server_type,0);
+							msgrcv(queue,&move_player,sizeof(msgbuf),move_player_type,0);
+							printf("move_player=%d\n",move_player.number);
 							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
-							tab[move_rbuf1.number][move_rbuf2.number]=1;
+							tab[move_rbuf1.number][move_rbuf2.number]=move_player.number;
 							wyswietl(tab);
 							sleep(1);
 						}
