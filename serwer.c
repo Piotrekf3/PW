@@ -79,7 +79,7 @@ void send_to_all_clients(int index_memory,int semid, msgbuf_char sbuf)
 	for(i=1;i<100;i++)
 	{
 		if(client_indexes[i].queue_index!=0 && client_indexes[i].enemy_index==0)
-			msgsnd(client_indexes[i].queue_index,&sbuf,sizeof(msgbuf_char),0);
+			msgsnd(client_indexes[i].queue_index,&sbuf,sizeof(msgbuf_char)-sizeof(long),0);
 	}
 	shmdt(client_indexes);
 	increase_semaphore(semid);
@@ -119,9 +119,9 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 	msgbuf sbuf;
 	sbuf.mtype=send_request_type;
 	sbuf.number=player_id;
-	msgsnd(queue,&sbuf,sizeof(msgbuf),0);
+	msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 	msgbuf rbuf;
-	msgrcv(queue,&rbuf,sizeof(msgbuf),receive_request_type,0);
+	msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),receive_request_type,0);
 	if(rbuf.number)//gracz sie zgodzil
 	{
 		decrease_semaphore(semid);
@@ -155,7 +155,7 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		increase_semaphore(semid);
 
 		sbuf.mtype=start_game_type;
-		msgsnd(queue,&sbuf,sizeof(msgbuf),0);
+		msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 		return 1;
 	}
 	else
@@ -183,7 +183,7 @@ void send_player_names(int index_memory,int semid, int player_queue)
 		if(client_indexes[i].queue_index!=0 && client_indexes[i].enemy_index==0)
 		{
 			sbuf.number=i;
-			msgsnd(client_indexes[player_queue].queue_index,&sbuf,sizeof(msgbuf),0);
+			msgsnd(client_indexes[player_queue].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 		}
 	}
 	shmdt(client_indexes);
@@ -321,22 +321,22 @@ void send_move(int index_memory, int semid, int player_id, int line, int column,
 	sbuf[0].number=sbuf[1].number=line;
 	printf("sbuf[0]=%d\n",sbuf[0].number);
 	printf("player_index=%d\n enemy_index=%d\n",client_indexes[player_id].queue_index,client_indexes[player_id].enemy_index);
-	msgsnd(client_indexes[player_id].queue_index,&sbuf[0],sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf[1],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[0],sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[1],sizeof(msgbuf)-sizeof(long),0);
 	printf("Wyslano wiersz\n");
 
 	//wysylanie kloumny
 	sbuf[2].mtype=sbuf[3].mtype=move_column_server_type;
 	sbuf[2].number=sbuf[3].number=column;
-	msgsnd(client_indexes[player_id].queue_index,&sbuf[2],sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf[3],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[2],sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[3],sizeof(msgbuf)-sizeof(long),0);
 	printf("wyslano kolumny\n");
 
 	//wysyalnie gracza
 	sbuf[4].mtype=sbuf[5].mtype=move_player_type;
 	sbuf[4].number=sbuf[5].number=player;
-	msgsnd(client_indexes[player_id].queue_index,&sbuf[4],sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf[5],sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf[4],sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf[5],sizeof(msgbuf)-sizeof(long),0);
 
 	shmdt(client_indexes);
 	increase_semaphore(semid);
@@ -395,8 +395,8 @@ void end_game(int index_memory, int semid,int player_id,int result)
 		increase_semaphore(semid);
 		exit(1);
 	}
-	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 	sleep(3);
 	//usuwanie pamieci
 	msgctl(client_indexes[player_id].queue_index,IPC_RMID,0);
@@ -436,7 +436,7 @@ int main(int argc, char *argv[])
 	{
 		while(1)
 		{
-			if(msgrcv(global,&rbuf,sizeof(msgbuf),1,0)>0)
+			if(msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),1,0)>0)
 			{	
 				if(fork()==0)
 				{
@@ -451,7 +451,7 @@ int main(int argc, char *argv[])
 					msgbuf sbuf;
 					sbuf.mtype=3;
 					sbuf.number=first_empty(client_indexes);
-					msgsnd(global,&sbuf,sizeof(msgbuf),0);
+					msgsnd(global,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 					printf("Przyjalem klienta %d\n", sbuf.number);
 					int queue; //tworzenie kolejki do komunikacji z klientem
 					if((queue=msgget(sbuf.number,0666 | IPC_CREAT))==-1)
@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
 						while(1)
 						{
 							//odbiera od klienta
-							if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char),3,0)==-1)
+							if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),3,0)==-1)
 							{
 								perror("msgrcv\n");
 								exit(1);
@@ -518,7 +518,7 @@ int main(int argc, char *argv[])
 					else   //rozpoczynanie gry
 					{
 						msgbuf game_rbuf;
-						msgrcv(queue,&game_rbuf,sizeof(msgbuf),start_game_type,0);
+						msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),start_game_type,0);
 						printf("Rozpoczecie gry dla %d\n",sbuf.number);
 						int game_memory=get_memory_index(index_memory,index_semaphore,sbuf.number);
 						int game_semaphore=get_semaphore_index(index_memory,index_semaphore,sbuf.number);
@@ -540,8 +540,8 @@ int main(int argc, char *argv[])
 							game_rbuf.number=10;
 							while(!move_validation(game_tab,game_rbuf.number))
 							{
-								msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
-								msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_r_type,0);
+								msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
+								msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_r_type,0);
 							}
 							int line = make_move(game_tab,game_rbuf.number,player_id);//do zmiany nr gracza
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);

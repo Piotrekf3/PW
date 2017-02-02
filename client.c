@@ -76,10 +76,10 @@ int main(int argc, char *argv[])
 		perror("msgget\n");
 		exit(1);
 	}
-	msgsnd(global,&sbuf,sizeof(msgbuf),0);
+	msgsnd(global,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 	msgbuf rbuf;
 	rbuf.mtype=3;
-	msgrcv(global,&rbuf,sizeof(msgbuf),3,0);
+	msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),3,0);
 	printf("Jestem klientem nr: %d",rbuf.number);
 
 	int queue;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	{
 		while(1)
 		{
-			msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char),2,0);
+			msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0);
 			printf("Gracz %d: %s\n",chat_rbuf.number,chat_rbuf.text);
 		}
 	}
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 			msgbuf request_rbuf;
 			while(1)
 			{
-				msgrcv(queue,&request_rbuf,sizeof(msgbuf),send_request_type,0);
+				msgrcv(queue,&request_rbuf,sizeof(msgbuf)-sizeof(long),send_request_type,0);
 				printf("Czy chcesz rozpoczac gre z graczem %d? (y/n)\n",request_rbuf.number);
 				char c_answer;
 				int answer;
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 
 				request_rbuf.number=answer;
 				request_rbuf.mtype=receive_request_type;
-				msgsnd(queue,&request_rbuf,sizeof(msgbuf),0);
+				msgsnd(queue,&request_rbuf,sizeof(msgbuf)-sizeof(long),0);
 
 				if(answer==1)//zaczyna gre
 				{
@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
 						while(1)
 						{
 							//przyjmowanie ruchu z serwera
-							msgrcv(queue,&move_rbuf1,sizeof(msgbuf),move_line_server_type,0);
-							msgrcv(queue,&move_rbuf2,sizeof(msgbuf),move_column_server_type,0);
-							msgrcv(queue,&move_player,sizeof(msgbuf),move_player_type,0);
+							msgrcv(queue,&move_rbuf1,sizeof(msgbuf)-sizeof(long),move_line_server_type,0);
+							msgrcv(queue,&move_rbuf2,sizeof(msgbuf)-sizeof(long),move_column_server_type,0);
+							msgrcv(queue,&move_player,sizeof(msgbuf)-sizeof(long),move_player_type,0);
 							printf("move_player=%d\n",move_player.number);
 							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
 							tab[move_rbuf1.number][move_rbuf2.number]=move_player.number;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 					{
 						while(1)
 						{
-							msgrcv(queue,&game_rbuf,sizeof(msgbuf),move_s_type,0);
+							msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_s_type,0);
 
 							printf("Twój ruch\n");
 							char c;
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 							scanf("%c",&move);
 							game_sbuf.number=(int)move-'A';
 							printf("%d\n",game_sbuf.number);
-							msgsnd(queue,&game_sbuf,sizeof(msgbuf),0);
+							msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
 						}
 					}
 				}
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 				msgbuf players_rbuf;
 				while(1) //odbieranie listy graczy
 				{
-					msgrcv(queue,&players_rbuf,sizeof(msgbuf),show_players_type,0);
+					msgrcv(queue,&players_rbuf,sizeof(msgbuf)-sizeof(long),show_players_type,0);
 					printf("Gracz %d - wolny\n",players_rbuf.number);
 				}
 			}
@@ -197,13 +197,13 @@ int main(int argc, char *argv[])
 						decrease_semaphore(enter_semaphore);
 						scanf("%s",chat_sbuf.text);
 						increase_semaphore(enter_semaphore);
-						msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+						msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char)-sizeof(long),0);
 					}
 				}
 				else
 				{
 					msgbuf rbuf;
-					msgrcv(queue,&rbuf,sizeof(msgbuf),end_game_type,0);
+					msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0);
 					printf("Koniec\n");
 					return 0;
 
