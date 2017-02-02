@@ -141,7 +141,6 @@ int main(int argc, char *argv[])
 					msgbuf move_rbuf1;
 					msgbuf move_rbuf2;
 					msgbuf move_player;
-
 					if(fork()==0)
 					{
 						while(1)
@@ -191,15 +190,24 @@ int main(int argc, char *argv[])
 				}
 			}
 			else
-			{
-				while(1) //wysylanie czatu
+				if(fork()==0)
 				{
-					decrease_semaphore(enter_semaphore);
-					scanf("%s",chat_sbuf.text);
-					increase_semaphore(enter_semaphore);
-					msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+					while(1) //wysylanie czatu
+					{
+						decrease_semaphore(enter_semaphore);
+						scanf("%s",chat_sbuf.text);
+						increase_semaphore(enter_semaphore);
+						msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char),0);
+					}
 				}
-			}
+				else
+				{
+					msgbuf rbuf;
+					msgrcv(queue,&rbuf,sizeof(msgbuf),end_game_type,0);
+					printf("Koniec\n");
+					return 0;
+
+				}
 		}
 	}
 	return 0;

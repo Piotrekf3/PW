@@ -153,7 +153,7 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 		}
 		shmdt(client_indexes);
 		increase_semaphore(semid);
-		
+
 		sbuf.mtype=start_game_type;
 		msgsnd(queue,&sbuf,sizeof(msgbuf),0);
 		return 1;
@@ -288,7 +288,7 @@ int move_validation(int ** game_tab, int column)
 	}
 	else
 		printf("move_validation3\n");
-		return 0;
+	return 0;
 }
 
 int make_move(int **game_tab, int column, int player)
@@ -337,6 +337,74 @@ void send_move(int index_memory, int semid, int player_id, int line, int column,
 	sbuf[4].number=sbuf[5].number=player;
 	msgsnd(client_indexes[player_id].queue_index,&sbuf[4],sizeof(msgbuf),0);
 	msgsnd(client_indexes[player_id].enemy_index,&sbuf[5],sizeof(msgbuf),0);
+
+	shmdt(client_indexes);
+	increase_semaphore(semid);
+}
+
+//sprawdza czy ktos wygral  
+//dodac sprawdzanie na skos!!!!!!!!!!!!!!!!!!!!
+int check_for_win(int ** game_tab)
+{
+	int i=0;
+	int j=0;
+	int a=0;
+	int last=0;
+	for(i=0;i<6;i++)
+	{
+		for(j=0;j<7;j++)
+		{
+			if(last!=0 && game_tab[i][j]==last)
+				a++;
+			else
+				a=0;
+			last=game_tab[i][j];
+			if(a==3) return last;
+		}
+		last=0;
+		a=0;
+	}
+	for(j=0;j<7;j++)
+	{
+		for(i=0;i<6;i++)
+		{
+			if(last!=0 && game_tab[i][j]==last)
+				a++;
+			else
+				a=0;
+			last=game_tab[i][j];
+			if(a==3) return last;
+		}
+		last=0;
+		a=0;
+	}
+	return 0;
+}
+
+//wysyla koniec gry do graczy i czysci pamiec
+void end_game(int index_memory, int semid,int player_id,int result)
+{
+	msgbuf sbuf;
+	sbuf.mtype=end_game_type;
+	sbuf.number=result;
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf),0);
+	sleep(3);
+	//usuwanie pamieci
+	msgctl(client_indexes[player_id].queue_index,IPC_RMID,0);
+	msgctl(client_indexes[player_id].enemy_index,IPC_RMID,0);
+	client_indexes[player_id].queue_index=0;
+	client_indexes[player_id].enemy_index=0;
+	shmctl(client_indexes[player_id].memory_index,IPC_RMID,0);
+	semctl(client_indexes[player_id].semaphore_index,IPC_RMID,0);
 
 	shmdt(client_indexes);
 	increase_semaphore(semid);
@@ -482,8 +550,16 @@ int main(int argc, char *argv[])
 							//wysylanie ruchu do graczy
 							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number,player_id);
 							//koniec ruchu
+
+							//sprawdzanie zwyciestwa
+							int game_result = check_for_win(game_tab);
 							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 							//podniesienie semafora
+							if(game_result!=0)
+							{
+								end_game(index_memory,index_semaphore,sbuf.number,game_result);
+								exit(1);
+							}
 							sleep(1);
 						}
 
