@@ -396,7 +396,7 @@ void end_game(int index_memory, int semid,int player_id,int result)
 		exit(1);
 	}
 	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
-	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 	printf("Wygral gracz %d\n",result);
 	sleep(3);
 	//usuwanie pamieci

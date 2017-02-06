@@ -235,6 +235,7 @@ int main(int argc, char *argv[])
 						perror("msgrcv\n");
 						exit(1);
 					}
+					sleep(1);
 					printf("Wygral gracz %d\n",rbuf.number);
 					int i;
 					for(i=0;i<4;i++)
