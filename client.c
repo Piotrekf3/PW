@@ -8,6 +8,8 @@
 #include<string.h>
 #include<unistd.h>
 #include<sys/msg.h>
+#include<signal.h>
+#include<wait.h>
 #include"struct.h"
 
 void wyswietl(int tab[6][7])
@@ -61,6 +63,7 @@ void decrease_semaphore(int semid)
 
 int main(int argc, char *argv[])
 {
+	int pids[10];
 	int enter_semaphore;
 	if((enter_semaphore=semget(IPC_PRIVATE,1,0666 | IPC_CREAT))==-1)
 	{
@@ -95,17 +98,22 @@ int main(int argc, char *argv[])
 	msgbuf_char chat_sbuf;
 	chat_sbuf.mtype=3;
 	chat_sbuf.number=rbuf.number;
-	if(fork()==0) //odbieranie
+	pids[0]=fork();
+	if(pids[0]==0) //odbieranie
 	{
 		while(1)
 		{
-			msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0);
+			if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0)==-1)
+			{
+				exit(1);
+			}
 			printf("Gracz %d: %s\n",chat_rbuf.number,chat_rbuf.text);
 		}
 	}
 	else 
 	{
-		if(fork()==0) //odbieranie zapytan o grę
+		pids[1]=fork();
+		if(pids[1]==0) //odbieranie zapytan o grę
 		{
 			msgbuf request_rbuf;
 			while(1)
@@ -146,9 +154,18 @@ int main(int argc, char *argv[])
 						while(1)
 						{
 							//przyjmowanie ruchu z serwera
-							msgrcv(queue,&move_rbuf1,sizeof(msgbuf)-sizeof(long),move_line_server_type,0);
-							msgrcv(queue,&move_rbuf2,sizeof(msgbuf)-sizeof(long),move_column_server_type,0);
-							msgrcv(queue,&move_player,sizeof(msgbuf)-sizeof(long),move_player_type,0);
+							if(msgrcv(queue,&move_rbuf1,sizeof(msgbuf)-sizeof(long),move_line_server_type,0)==-1)
+							{
+								exit(1);
+							}
+							if(msgrcv(queue,&move_rbuf2,sizeof(msgbuf)-sizeof(long),move_column_server_type,0)==-1)
+							{
+								exit(1);
+							}
+							if(msgrcv(queue,&move_player,sizeof(msgbuf)-sizeof(long),move_player_type,0)==-1)
+							{
+								exit(1);
+							}
 							printf("move_player=%d\n",move_player.number);
 							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
 							tab[move_rbuf1.number][move_rbuf2.number]=move_player.number;
@@ -160,7 +177,10 @@ int main(int argc, char *argv[])
 					{
 						while(1)
 						{
-							msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_s_type,0);
+							if(msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_s_type,0)==-1)
+							{
+								exit(1);
+							}
 
 							printf("Twój ruch\n");
 							char c;
@@ -180,17 +200,24 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			if(fork()==0)
+			pids[2]=fork();
+			if(pids[2]==0)
 			{
 				msgbuf players_rbuf;
 				while(1) //odbieranie listy graczy
 				{
-					msgrcv(queue,&players_rbuf,sizeof(msgbuf)-sizeof(long),show_players_type,0);
-					printf("Gracz %d - wolny\n",players_rbuf.number);
+					if(msgrcv(queue,&players_rbuf,sizeof(msgbuf)-sizeof(long),show_players_type,0)==-1)
+					{
+						exit(1);
+					}
+					else
+						printf("Gracz %d - wolny\n",players_rbuf.number);
 				}
 			}
 			else
-				if(fork()==0)
+			{
+				pids[3]=fork();
+				if(pids[3]==0)
 				{
 					while(1) //wysylanie czatu
 					{
@@ -203,11 +230,19 @@ int main(int argc, char *argv[])
 				else
 				{
 					msgbuf rbuf;
-					msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0);
-					printf("Koniec\n");
+					if(msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0)==-1)
+					{
+						perror("msgrcv\n");
+						exit(1);
+					}
+					printf("Wygral gracz %d\n",rbuf.number);
+					int i;
+					for(i=0;i<4;i++)
+						kill(pids[i],SIGKILL);
 					return 0;
 
 				}
+			}
 		}
 	}
 	return 0;

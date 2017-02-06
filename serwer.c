@@ -262,7 +262,7 @@ int ** assign_game_tab(int * data)
 	return game_memory;
 }
 
-void dismiss_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
+void free_game_tab_memory(int memory_index,int semid, int *** game_memory,int ** data)
 {
 	free(*game_memory);
 	*game_memory=NULL;
@@ -396,15 +396,19 @@ void end_game(int index_memory, int semid,int player_id,int result)
 		exit(1);
 	}
 	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
-	msgsnd(client_indexes[player_id].enemy_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(client_indexes[player_id].queue_index,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	printf("Wygral gracz %d\n",result);
 	sleep(3);
 	//usuwanie pamieci
+	printf("usuwa kolejki\n");
 	msgctl(client_indexes[player_id].queue_index,IPC_RMID,0);
+	semctl(client_indexes[player_id].semaphore_index,IPC_RMID,0);
+
 	msgctl(client_indexes[player_id].enemy_index,IPC_RMID,0);
+	shmctl(client_indexes[player_id].memory_index,IPC_RMID,0);
+	client_indexes[player_id].memory_index=0;
 	client_indexes[player_id].queue_index=0;
 	client_indexes[player_id].enemy_index=0;
-	shmctl(client_indexes[player_id].memory_index,IPC_RMID,0);
-	semctl(client_indexes[player_id].semaphore_index,IPC_RMID,0);
 
 	shmdt(client_indexes);
 	increase_semaphore(semid);
@@ -412,6 +416,7 @@ void end_game(int index_memory, int semid,int player_id,int result)
 
 int main(int argc, char *argv[])
 {
+	int pids[10];
 	//kolejka globalna
 	int global;
 	if((global=msgget(global_key,0666 | IPC_CREAT))==-1)
@@ -438,7 +443,8 @@ int main(int argc, char *argv[])
 		{
 			if(msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),1,0)>0)
 			{	
-				if(fork()==0)
+				pids[0]=fork();
+				if(pids[0]==0)
 				{
 					//przydzielanie pam współdzielonej
 					Client_indexes * client_indexes;
@@ -469,8 +475,8 @@ int main(int argc, char *argv[])
 					chat_rbuf.mtype=3;
 					msgbuf_char chat_sbuf;
 					chat_sbuf.mtype=2;
-
-					if(fork()==0)//odbieranie
+					pids[1]=fork();
+					if(pids[1]==0)//odbieranie
 					{
 						while(1)
 						{
@@ -532,6 +538,17 @@ int main(int argc, char *argv[])
 							data = assign_data(game_memory,game_semaphore);
 							game_tab = assign_game_tab(data);
 							wyswietl(game_tab);
+							//sprawdzanie zwyciestwa
+							int game_result = check_for_win(game_tab);
+							if(game_result!=0)
+							{
+								free_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+								end_game(index_memory,index_semaphore,sbuf.number,game_result);
+								kill(pids[1],SIGKILL);
+								exit(1);
+								printf(" po exit\n");
+							}
+
 
 							//ruch tego gracza
 							msgbuf game_sbuf;
@@ -551,15 +568,8 @@ int main(int argc, char *argv[])
 							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number,player_id);
 							//koniec ruchu
 
-							//sprawdzanie zwyciestwa
-							int game_result = check_for_win(game_tab);
-							dismiss_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+							free_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 							//podniesienie semafora
-							if(game_result!=0)
-							{
-								end_game(index_memory,index_semaphore,sbuf.number,game_result);
-								exit(1);
-							}
 							sleep(1);
 						}
 
