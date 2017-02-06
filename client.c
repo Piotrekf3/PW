@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 			{
 				exit(1);
 			}
-			printf("Gracz %d: %s\n",chat_rbuf.number,chat_rbuf.text);
+			printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
 		}
 	}
 	else 
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 					while(1) //wysylanie czatu
 					{
 						decrease_semaphore(enter_semaphore);
-						scanf("%s",chat_sbuf.text);
+						fgets(chat_sbuf.text,255,stdin);
 						increase_semaphore(enter_semaphore);
 						msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char)-sizeof(long),0);
 					}
