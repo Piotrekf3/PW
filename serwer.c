@@ -344,7 +344,7 @@ void send_move(int index_memory, int semid, int player_id, int line, int column,
 
 //sprawdza czy ktos wygral  
 //dodac sprawdzanie na skos!!!!!!!!!!!!!!!!!!!!
-int check_for_win(int ** game_tab)
+int check_for_win(int ** game_tab,int line,int column)
 {
 	int i=0;
 	int j=0;
@@ -378,6 +378,35 @@ int check_for_win(int ** game_tab)
 		last=0;
 		a=0;
 	}
+	int temp=line-column;
+	for(i=0;i<6;i++)
+		for(j=0;j<7;j++)
+		{
+			if((i-j)==temp)
+			{
+				if(last!=0 && game_tab[i][j]==last)
+					a++;
+				else
+					a=0;
+				last=game_tab[i][j];
+				if(a==3) return last;
+			}
+		}
+	temp=line+column;
+	for(i=0;i<6;i++)
+		for(j=0;j<7;j++)
+		{
+			if((i+j)==temp)
+			{
+				if(last!=0 && game_tab[i][j]==last)
+					a++;
+				else
+					a=0;
+				last=game_tab[i][j];
+				if(a==3) return last;
+			}
+		}
+
 	return 0;
 }
 
@@ -538,17 +567,6 @@ int main(int argc, char *argv[])
 							data = assign_data(game_memory,game_semaphore);
 							game_tab = assign_game_tab(data);
 							wyswietl(game_tab);
-							//sprawdzanie zwyciestwa
-							int game_result = check_for_win(game_tab);
-							if(game_result!=0)
-							{
-								free_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
-								end_game(index_memory,index_semaphore,sbuf.number,game_result);
-								kill(pids[1],SIGKILL);
-								exit(1);
-								printf(" po exit\n");
-							}
-
 
 							//ruch tego gracza
 							msgbuf game_sbuf;
@@ -557,8 +575,17 @@ int main(int argc, char *argv[])
 							game_rbuf.number=10;
 							while(!move_validation(game_tab,game_rbuf.number))
 							{
-								msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
-								msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_r_type,0);
+								if(msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0)==-1)
+								{
+									perror("msgsnd");
+									exit(1);
+								}
+								if(msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_r_type,0)==-1)
+								{
+									perror("msgrcv");
+									end_game(index_memory,index_semaphore,sbuf.number,1);
+									exit(1);
+								}
 							}
 							int line = make_move(game_tab,game_rbuf.number,player_id);//do zmiany nr gracza
 							printf("ruch na pole %d wykonany\n",game_rbuf.number);
@@ -567,7 +594,16 @@ int main(int argc, char *argv[])
 							//wysylanie ruchu do graczy
 							send_move(index_memory,index_semaphore,sbuf.number,line,game_rbuf.number,player_id);
 							//koniec ruchu
-
+							//sprawdzanie zwyciestwa
+							int game_result = check_for_win(game_tab,line,game_rbuf.number);
+							if(game_result!=0)
+							{
+								free_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
+								end_game(index_memory,index_semaphore,sbuf.number,sbuf.number);
+								kill(pids[1],SIGKILL);
+								exit(1);
+								printf(" po exit\n");
+							}
 							free_game_tab_memory(game_memory,game_semaphore,&game_tab,&data);
 							//podniesienie semafora
 							sleep(1);
