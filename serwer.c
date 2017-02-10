@@ -470,6 +470,7 @@ int main(int argc, char *argv[])
 	{
 		while(1)
 		{
+			printf("dupa\n");
 			if(msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),1,0)>0)
 			{	
 				pids[0]=fork();
