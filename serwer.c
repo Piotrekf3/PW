@@ -465,12 +465,16 @@ int main(int argc, char *argv[])
 	increase_semaphore(index_semaphore);
 
 	connect rbuf;
-	rbuf.mtype = 1;
 	if(fork()==0)
 	{
 		while(1)
 		{
-			if(msgrcv(global,&rbuf,sizeof(connect)-sizeof(long),1,0))
+			if(msgrcv(global,&rbuf,sizeof(connect)-sizeof(long),1,0)==-1)
+			{
+				perror("msgrcv\n");
+				exit(1);
+			}
+			else
 			{	
 				pids[0]=fork();
 				if(pids[0]==0)

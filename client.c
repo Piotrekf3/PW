@@ -79,10 +79,17 @@ int main(int argc, char *argv[])
 		perror("msgget\n");
 		exit(1);
 	}
-	msgsnd(global,&sbuf,sizeof(connect)-sizeof(long),0);
+	if(msgsnd(global,&sbuf,sizeof(connect)-sizeof(long),0)==-1)
+	{
+		perror("msgsnd\n");
+		exit(1);
+	}
 	msgbuf rbuf;
-	rbuf.mtype=3;
-	msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),3,0);
+	if(msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),3,0)==-1)
+	{
+		perror("msgrcv\n");
+		exit(1);
+	}
 	printf("Jestem klientem nr: %d",rbuf.number);
 
 	int queue;
