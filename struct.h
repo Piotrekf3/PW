@@ -12,6 +12,11 @@
 #define move_player_type 12 //oznacza ktory grzacz zrobil ruch
 #define end_game_type 20
 
+typedef struct connect
+{
+	long mtype;
+} connect;
+
 typedef struct msgbuf
 {
 	long mtype;

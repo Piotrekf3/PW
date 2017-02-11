@@ -464,14 +464,13 @@ int main(int argc, char *argv[])
 	int index_semaphore=semget(IPC_PRIVATE,1,0666 | IPC_CREAT);
 	increase_semaphore(index_semaphore);
 
-	msgbuf rbuf;
+	connect rbuf;
 	rbuf.mtype = 1;
 	if(fork()==0)
 	{
 		while(1)
 		{
-			printf("dupa\n");
-			if(msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),1,0)>0)
+			if(msgrcv(global,&rbuf,sizeof(connect)-sizeof(long),1,0))
 			{	
 				pids[0]=fork();
 				if(pids[0]==0)

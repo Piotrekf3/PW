@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	increase_semaphore(enter_semaphore);
-	msgbuf sbuf;
+	connect sbuf;
 	sbuf.mtype=1;
 	int global;
 	if((global=msgget(global_key,0666 | IPC_CREAT))==-1)
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 		perror("msgget\n");
 		exit(1);
 	}
-	msgsnd(global,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(global,&sbuf,sizeof(connect)-sizeof(long),0);
 	msgbuf rbuf;
 	rbuf.mtype=3;
 	msgrcv(global,&rbuf,sizeof(msgbuf)-sizeof(long),3,0);
