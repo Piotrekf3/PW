@@ -143,12 +143,12 @@ int send_request(int index_memory, int semid,int player_id, int enemy_id)
 	msgbuf sbuf;
 	sbuf.number=player_id;
 	sbuf.mtype=start_game_type;
-	int i=0;
-	for(i=0;i<2;i++)
-	{
-		msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
-		msgsnd(queue2,&sbuf,sizeof(msgbuf)-sizeof(long),0);
-	}
+	msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(queue2,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	sleep(1);
+	sbuf.number=enemy_id;
+	msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	msgsnd(queue2,&sbuf,sizeof(msgbuf)-sizeof(long),0);
 	return 1;
 }
 

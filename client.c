@@ -122,14 +122,14 @@ int main(int argc, char *argv[])
 		pids[0]=fork();
 		if(pids[0]==0) //odbieranie
 		{
-				while(1)
+			while(1)
+			{
+				if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0)==-1)
 				{
-					if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0)==-1)
-					{
-						exit(1);
-					}
-					printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+					exit(1);
 				}
+				printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+			}
 		}
 		else 
 		{
@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
 				}
 				kill(pids[3],SIGKILL);
 				kill(pids[0],SIGKILL);
+				//printf("\n");
 				int tab[6][7];
 				zeruj(tab);
 				wyswietl(tab);
@@ -189,15 +190,14 @@ int main(int argc, char *argv[])
 						}
 
 						printf("Twój ruch\n");
+						char move;
+						scanf("%c",&move);
 						char c;
 						while((c=fgetc(stdin))!='\n')
 						{
-							printf("%c\n",c);
+						//	printf("%c\n",c);
 						}
-						char move;
-						scanf("%c",&move);
 						game_sbuf.number=(int)move-'A';
-						printf("%d\n",game_sbuf.number);
 						msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
 					}
 				}
@@ -220,18 +220,18 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
-						msgbuf rbuf;
-						if(msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0)==-1)
-						{
-							perror("msgrcv\n");
-							exit(1);
-						}
-						sleep(1);
-						printf("Wygral gracz %d\n",rbuf.number);
-						int i;
-						for(i=0;i<4;i++)
-							kill(pids[i],SIGKILL);
-						return 0;
+					msgbuf rbuf;
+					if(msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0)==-1)
+					{
+						perror("msgrcv\n");
+						exit(1);
+					}
+					sleep(1);
+					printf("Wygral gracz %d\n",rbuf.number);
+					int i;
+					for(i=0;i<4;i++)
+						kill(pids[i],SIGKILL);
+					return 0;
 
 				}
 			}
