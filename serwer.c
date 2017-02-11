@@ -97,12 +97,62 @@ int load_chosen_player(const char * text)
 	}
 	int result=atoi(temp);
 	free(temp);
-	return result;
+	if(result<100 && result >=0)
+		return result;
+	else
+		return -1;
 
 }
 
 //wysyla zapytanie o rozpoczecie gry i ja tworzy
 int send_request(int index_memory, int semid,int player_id, int enemy_id)
+{
+	Client_indexes * client_indexes;
+	decrease_semaphore(semid);
+	if((client_indexes=shmat(index_memory,NULL,0))==(void*)-1)
+	{
+		perror("shmat\n");
+		increase_semaphore(semid);
+		exit(1);
+	}
+	int queue=client_indexes[enemy_id].queue_index;
+	int queue2=client_indexes[player_id].queue_index;
+	if(client_indexes[enemy_id].enemy_index!=0)
+		return 0;
+
+	client_indexes[player_id].enemy_index=client_indexes[enemy_id].queue_index;
+	client_indexes[enemy_id].enemy_index=client_indexes[player_id].queue_index;
+	if((client_indexes[player_id].memory_index=shmget(IPC_PRIVATE, 6*7*sizeof(int), 0666 | IPC_CREAT))==-1)
+	{
+		perror("shmget\n");
+		exit(1);
+	}
+	client_indexes[enemy_id].memory_index=client_indexes[player_id].memory_index;
+	if((client_indexes[player_id].semaphore_index=semget(IPC_PRIVATE,1,0666 | IPC_CREAT))==-1)
+	{
+		perror("semget\n");
+		exit(1);
+	}
+	client_indexes[enemy_id].semaphore_index=client_indexes[player_id].semaphore_index;
+	increase_semaphore(client_indexes[player_id].semaphore_index);
+	client_indexes[enemy_id].player_id=2;
+	client_indexes[player_id].player_id=1;
+	shmdt(client_indexes);
+	increase_semaphore(semid);
+
+	msgbuf sbuf;
+	sbuf.number=player_id;
+	sbuf.mtype=start_game_type;
+	int i=0;
+	for(i=0;i<2;i++)
+	{
+		msgsnd(queue,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+		msgsnd(queue2,&sbuf,sizeof(msgbuf)-sizeof(long),0);
+	}
+	return 1;
+}
+
+int send_request2(int index_memory, int semid,int player_id, int enemy_id)
 {
 	Client_indexes * client_indexes;
 	decrease_semaphore(semid);
@@ -524,19 +574,13 @@ int main(int argc, char *argv[])
 								if(isdigit(chat_rbuf.text[1])) //:nr_gracza
 								{
 									int chosen_player=load_chosen_player(chat_rbuf.text);
-									//wysyla do nadawcy
-									if(fork()==0)
+									if(chosen_player!=-1)
 									{
-										if(send_request(index_memory,index_semaphore,chosen_player,sbuf.number))
+										//wysyla do przeciwnika
+										if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
 										{
-											printf("ok2\n");
+											printf("ok\n");
 										}
-										exit(1);
-									}
-									//wysyla do przeciwnika
-									if(send_request(index_memory,index_semaphore,sbuf.number,chosen_player))
-									{
-										printf("ok\n");
 									}
 
 								}

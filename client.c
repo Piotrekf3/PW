@@ -105,149 +105,133 @@ int main(int argc, char *argv[])
 	msgbuf_char chat_sbuf;
 	chat_sbuf.mtype=3;
 	chat_sbuf.number=rbuf.number;
-	pids[0]=fork();
-	if(pids[0]==0) //odbieranie
+	pids[3]=fork();
+	if(pids[3]==0)
 	{
-		while(1)
+		while(1) //wysylanie czatu
 		{
-			if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0)==-1)
-			{
-				exit(1);
-			}
-			printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+			//decrease_semaphore(enter_semaphore);
+			fgets(chat_sbuf.text,255,stdin);
+			//increase_semaphore(enter_semaphore);
+			msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char)-sizeof(long),0);
 		}
 	}
-	else 
+	else
 	{
-		pids[1]=fork();
-		if(pids[1]==0) //odbieranie zapytan o grę
+
+		pids[0]=fork();
+		if(pids[0]==0) //odbieranie
 		{
-			msgbuf request_rbuf;
-			while(1)
-			{
-				msgrcv(queue,&request_rbuf,sizeof(msgbuf)-sizeof(long),send_request_type,0);
-				printf("Czy chcesz rozpoczac gre z graczem %d? (y/n)\n",request_rbuf.number);
-				char c_answer;
-				int answer;
-				decrease_semaphore(enter_semaphore);
-				scanf("%c",&c_answer);
-				if(c_answer=='y')
-					answer=1;
-				else
+				while(1)
 				{
-					increase_semaphore(enter_semaphore);
-					answer=0;
-				}
-
-				request_rbuf.number=answer;
-				request_rbuf.mtype=receive_request_type;
-				msgsnd(queue,&request_rbuf,sizeof(msgbuf)-sizeof(long),0);
-
-				if(answer==1)//zaczyna gre
-				{
-					int tab[6][7];
-					zeruj(tab);
-					wyswietl(tab);
-					msgbuf game_rbuf;
-					msgbuf game_sbuf;
-					game_sbuf.mtype=move_r_type;
-
-
-					msgbuf move_rbuf1;
-					msgbuf move_rbuf2;
-					msgbuf move_player;
-					if(fork()==0)
-					{
-						while(1)
-						{
-							//przyjmowanie ruchu z serwera
-							if(msgrcv(queue,&move_rbuf1,sizeof(msgbuf)-sizeof(long),move_line_server_type,0)==-1)
-							{
-								exit(1);
-							}
-							if(msgrcv(queue,&move_rbuf2,sizeof(msgbuf)-sizeof(long),move_column_server_type,0)==-1)
-							{
-								exit(1);
-							}
-							if(msgrcv(queue,&move_player,sizeof(msgbuf)-sizeof(long),move_player_type,0)==-1)
-							{
-								exit(1);
-							}
-							printf("move_player=%d\n",move_player.number);
-							printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
-							tab[move_rbuf1.number][move_rbuf2.number]=move_player.number;
-							wyswietl(tab);
-							sleep(1);
-						}
-					}
-					else
-					{
-						while(1)
-						{
-							if(msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_s_type,0)==-1)
-							{
-								exit(1);
-							}
-
-							printf("Twój ruch\n");
-							char c;
-							while((c=fgetc(stdin))!='\n')
-							{
-								printf("%c\n",c);
-							}
-							char move;
-							scanf("%c",&move);
-							game_sbuf.number=(int)move-'A';
-							printf("%d\n",game_sbuf.number);
-							msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
-						}
-					}
-				}
-			}
-		}
-		else
-		{
-			pids[2]=fork();
-			if(pids[2]==0)
-			{
-				msgbuf players_rbuf;
-				while(1) //odbieranie listy graczy
-				{
-					if(msgrcv(queue,&players_rbuf,sizeof(msgbuf)-sizeof(long),show_players_type,0)==-1)
+					if(msgrcv(queue,&chat_rbuf,sizeof(msgbuf_char)-sizeof(long),2,0)==-1)
 					{
 						exit(1);
 					}
-					else
-						printf("Gracz %d - wolny\n",players_rbuf.number);
+					printf("Gracz %d: %s",chat_rbuf.number,chat_rbuf.text);
+				}
+		}
+		else 
+		{
+			pids[1]=fork();
+			if(pids[1]==0) //odbieranie zapytan o grę
+			{
+				msgbuf request_rbuf;
+				if(msgrcv(queue,&request_rbuf,sizeof(request_rbuf)-sizeof(long),start_game_type,0)==-1) //zaczyna gre
+				{
+					perror("msgrcv\n");
+					exit(1);
+				}
+				kill(pids[3],SIGKILL);
+				kill(pids[0],SIGKILL);
+				int tab[6][7];
+				zeruj(tab);
+				wyswietl(tab);
+				msgbuf game_rbuf;
+				msgbuf game_sbuf;
+				game_sbuf.mtype=move_r_type;
+
+
+				msgbuf move_rbuf1;
+				msgbuf move_rbuf2;
+				msgbuf move_player;
+				if(fork()==0)
+				{
+					while(1)
+					{
+						//przyjmowanie ruchu z serwera
+						if(msgrcv(queue,&move_rbuf1,sizeof(msgbuf)-sizeof(long),move_line_server_type,0)==-1)
+						{
+							exit(1);
+						}
+						if(msgrcv(queue,&move_rbuf2,sizeof(msgbuf)-sizeof(long),move_column_server_type,0)==-1)
+						{
+							exit(1);
+						}
+						if(msgrcv(queue,&move_player,sizeof(msgbuf)-sizeof(long),move_player_type,0)==-1)
+						{
+							exit(1);
+						}
+						printf("move_player=%d\n",move_player.number);
+						printf("line=%d\n column=%d\n",move_rbuf1.number,move_rbuf2.number);
+						tab[move_rbuf1.number][move_rbuf2.number]=move_player.number;
+						wyswietl(tab);
+						sleep(1);
+					}
+				}
+				else
+				{
+					while(1)
+					{
+						if(msgrcv(queue,&game_rbuf,sizeof(msgbuf)-sizeof(long),move_s_type,0)==-1)
+						{
+							exit(1);
+						}
+
+						printf("Twój ruch\n");
+						char c;
+						while((c=fgetc(stdin))!='\n')
+						{
+							printf("%c\n",c);
+						}
+						char move;
+						scanf("%c",&move);
+						game_sbuf.number=(int)move-'A';
+						printf("%d\n",game_sbuf.number);
+						msgsnd(queue,&game_sbuf,sizeof(msgbuf)-sizeof(long),0);
+					}
 				}
 			}
 			else
 			{
-				pids[3]=fork();
-				if(pids[3]==0)
+				pids[2]=fork();
+				if(pids[2]==0)
 				{
-					while(1) //wysylanie czatu
+					msgbuf players_rbuf;
+					while(1) //odbieranie listy graczy
 					{
-						decrease_semaphore(enter_semaphore);
-						fgets(chat_sbuf.text,255,stdin);
-						increase_semaphore(enter_semaphore);
-						msgsnd(queue,&chat_sbuf,sizeof(msgbuf_char)-sizeof(long),0);
+						if(msgrcv(queue,&players_rbuf,sizeof(msgbuf)-sizeof(long),show_players_type,0)==-1)
+						{
+							exit(1);
+						}
+						else
+							printf("Gracz %d - wolny\n",players_rbuf.number);
 					}
 				}
 				else
 				{
-					msgbuf rbuf;
-					if(msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0)==-1)
-					{
-						perror("msgrcv\n");
-						exit(1);
-					}
-					sleep(1);
-					printf("Wygral gracz %d\n",rbuf.number);
-					int i;
-					for(i=0;i<4;i++)
-						kill(pids[i],SIGKILL);
-					return 0;
+						msgbuf rbuf;
+						if(msgrcv(queue,&rbuf,sizeof(msgbuf)-sizeof(long),end_game_type,0)==-1)
+						{
+							perror("msgrcv\n");
+							exit(1);
+						}
+						sleep(1);
+						printf("Wygral gracz %d\n",rbuf.number);
+						int i;
+						for(i=0;i<4;i++)
+							kill(pids[i],SIGKILL);
+						return 0;
 
 				}
 			}
